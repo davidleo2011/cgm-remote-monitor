@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Pacman</title>
 <style>
   html, body {
@@ -54,6 +57,36 @@
     color: #888;
     text-align: center;
   }
+  #pad {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 64px 64px 64px;
+    grid-template-rows: 64px 64px 64px;
+    gap: 6px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #pad button {
+    background: #1919a6;
+    color: #ffe600;
+    border: 2px solid #3232d6;
+    border-radius: 10px;
+    font-size: 28px;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  #pad button:active { background: #3232d6; }
+  #pad .empty { visibility: hidden; }
+  #pad .up    { grid-column: 2; grid-row: 1; }
+  #pad .left  { grid-column: 1; grid-row: 2; }
+  #pad .right { grid-column: 3; grid-row: 2; }
+  #pad .down  { grid-column: 2; grid-row: 3; }
+  #pad .center{ grid-column: 2; grid-row: 2; font-size: 14px; }
+  @media (hover: hover) and (pointer: fine) {
+    #pad { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -64,8 +97,15 @@
     <div><span class="label">LIVES</span> <span id="lives">3</span></div>
   </div>
   <canvas id="game" width="448" height="496"></canvas>
-  <div id="msg">Press SPACE or any arrow to start</div>
-  <div id="help">Arrow keys / WASD to move &middot; P to pause &middot; R to reset</div>
+  <div id="msg">Tap a direction or press SPACE to start</div>
+  <div id="help">Swipe or use the pad &middot; Arrow keys / WASD &middot; P pause &middot; R reset</div>
+  <div id="pad">
+    <button class="up"    data-dir="up"   aria-label="Up">&#9650;</button>
+    <button class="left"  data-dir="left" aria-label="Left">&#9664;</button>
+    <button class="center" data-dir="pause" aria-label="Pause">P</button>
+    <button class="right" data-dir="right" aria-label="Right">&#9654;</button>
+    <button class="down"  data-dir="down" aria-label="Down">&#9660;</button>
+  </div>
 </div>
 <script>
 (function () {
@@ -690,6 +730,57 @@
       e.preventDefault();
     }
   }, { passive: false });
+
+  // ---- Touch / on-screen pad ----
+  function applyDir(dir) {
+    if (gameOver) return;
+    if (dir === 'pause') {
+      if (!started) return;
+      paused = !paused;
+      msgEl.textContent = paused ? 'Paused. Tap P to resume.' : '';
+      return;
+    }
+    if (!started) {
+      started = true;
+      msgEl.textContent = '';
+    }
+    pacman.nextDir = dir;
+  }
+
+  document.querySelectorAll('#pad button').forEach(btn => {
+    const trigger = (e) => {
+      e.preventDefault();
+      applyDir(btn.dataset.dir);
+    };
+    btn.addEventListener('touchstart', trigger, { passive: false });
+    btn.addEventListener('mousedown', trigger);
+  });
+
+  // Swipe on the canvas
+  let touchStart = null;
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStart = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!touchStart || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      applyDir(dx > 0 ? 'right' : 'left');
+    } else {
+      applyDir(dy > 0 ? 'down' : 'up');
+    }
+    touchStart = { x: t.clientX, y: t.clientY };
+    e.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { touchStart = null; }, { passive: true });
+
+  // Prevent iOS double-tap zoom on the game area
+  canvas.addEventListener('dblclick', (e) => e.preventDefault());
 
   // ---- Start ----
   reset(true);
