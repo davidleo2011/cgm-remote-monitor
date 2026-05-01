@@ -256,6 +256,8 @@
         name: GHOST_NAMES[i],
         state: 'leaving', // leaving | chase | scatter | frightened | eaten
         leaveDelay: i * 90, // frames until this ghost leaves
+        lastTileX: -1,
+        lastTileY: -1,
         scatterTarget: [
           { x: COLS - 2, y: 0 },
           { x: 1, y: 0 },
@@ -492,6 +494,8 @@
         snapToTile(ghost);
         ghost.state = frightenedTimer > 0 ? 'frightened' : 'chase';
         ghost.dir = Math.random() < 0.5 ? 'left' : 'right';
+        ghost.lastTileX = -1;
+        ghost.lastTileY = -1;
       }
       return;
     }
@@ -511,9 +515,13 @@
       return;
     }
 
-    // At tile center, decide a direction
-    if (atTileCenter(ghost)) {
+    // Decide a direction once per new tile entered
+    const cx = Math.floor(ghost.x / TILE);
+    const cy = Math.floor(ghost.y / TILE);
+    if (atTileCenter(ghost) && (ghost.lastTileX !== cx || ghost.lastTileY !== cy)) {
       snapToTile(ghost);
+      ghost.lastTileX = cx;
+      ghost.lastTileY = cy;
       ghost.dir = chooseGhostDir(ghost);
     }
     const prevSpeed = ghost.speed;
